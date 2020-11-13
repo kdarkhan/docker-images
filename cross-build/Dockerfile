@@ -1,8 +1,8 @@
 FROM agners/archlinuxarm-arm64v8
 
-ENV PATH="/opt/bin:${PATH}"
+ENV PATH="/opt/bin:/usr/bin/vendor_perl:${PATH}"
 
-RUN pacman -Syu base-devel --noconfirm python wget neovim pigz pbzip2 --needed
+RUN pacman -Syu base-devel --noconfirm python wget neovim pigz pbzip2 po4a --needed
 
 RUN groupadd users && \
     useradd -ms /bin/bash builder && \
@@ -12,18 +12,21 @@ RUN groupadd users && \
 
 WORKDIR /home/builder
 
+CMD /bin/bash
+
 # Install fakeroot-tcp
-ADD silence-dlerror.patch /home/builder
-RUN wget http://ftp.debian.org/debian/pool/main/f/fakeroot/fakeroot_1.24.orig.tar.gz && \
-    tar xf fakeroot_1.24.orig.tar.gz && \
-    cd fakeroot-1.24 && \
-    patch -p1 -i /home/builder/silence-dlerror.patch && \
+RUN wget http://ftp.debian.org/debian/pool/main/f/fakeroot/fakeroot_1.25.3.orig.tar.gz && \
+    tar xf fakeroot_1.25.3.orig.tar.gz && \
+    cd fakeroot-1.25.3 && \
     ./bootstrap && \
     ./configure --prefix=/opt \
         --libdir=/usr/lib/libfakeroot \
         --disable-static \
         --with-ipc=tcp && \
     make -j $(nproc) && \
+    cd doc && \
+    po4a -k 0 --rm-backups --variable 'srcdir=../doc/' po4a/po4a.cfg && \
+    cd .. && \
     make DESTDIR=/ install && \
     echo '/usr/lib/libfakeroot' > /etc/ld.so.conf.d/fakeroot.conf
 
